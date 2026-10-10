@@ -42,6 +42,10 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // android.util.Log dkk. mengembalikan nilai default pada local unit test.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 ksp {
