@@ -2,22 +2,40 @@
 
 Aplikasi Android untuk memindai sinyal advertising perangkat **Bluetooth Low Energy (BLE)** di sekitar secara real-time, memantau kekuatan sinyal (RSSI), dan melacak kedekatan satu perangkat target menggunakan visualisasi radar berbasis zona jarak.
 
-> Study Case — Mobile Engineer
+> Study Case — Mobile Engineer · Repository: https://github.com/ajienergystar/pelacakBluetoothAndroid
+
+| | |
+|---|---|
+| **Platform** | Android 8.0 (API 26) – Android 16 (API 36) |
+| **Bahasa** | Kotlin 2.2 |
+| **UI** | Jetpack Compose + Material 3 |
+| **Arsitektur** | MVVM + Clean Architecture, Hilt DI |
+| **Penyimpanan lokal** | Room (SQLite) |
+| **Diuji di** | Samsung Galaxy A14 (SM-A145F), Android 15 / One UI 7.0 |
 
 ---
 
 ## Daftar Isi
 
 1. [Fitur](#fitur)
-2. [Setup & Menjalankan Aplikasi](#setup--menjalankan-aplikasi)
-3. [Arsitektur](#arsitektur)
-4. [Library & Alasan Pemilihan](#library--alasan-pemilihan)
-5. [Pemetaan RSSI → Zona & Jarak](#pemetaan-rssi--zona--jarak)
-6. [Error Handling & Resilience](#error-handling--resilience)
-7. [App Lifecycle](#app-lifecycle)
-8. [Testing](#testing)
-9. [Known Issues / Keterbatasan](#known-issues--keterbatasan)
-10. [Asumsi Teknis & Kendala](#asumsi-teknis--kendala)
+2. [Download APK](#download-apk)
+3. [Setup & Menjalankan Aplikasi](#setup--menjalankan-aplikasi)
+4. [Cara Penggunaan](#cara-penggunaan)
+5. [Izin Aplikasi](#izin-aplikasi)
+6. [Arsitektur](#arsitektur)
+7. [Alur Data](#alur-data)
+8. [Library & Alasan Pemilihan](#library--alasan-pemilihan)
+9. [Pemetaan RSSI → Zona & Jarak](#pemetaan-rssi--zona--jarak)
+10. [Error Handling & Resilience](#error-handling--resilience)
+11. [App Lifecycle](#app-lifecycle)
+12. [Skema Database](#skema-database)
+13. [Testing](#testing)
+14. [Status Pengujian](#status-pengujian)
+15. [Troubleshooting](#troubleshooting)
+16. [Known Issues / Keterbatasan](#known-issues--keterbatasan)
+17. [Asumsi Teknis & Kendala](#asumsi-teknis--kendala)
+18. [Riwayat Commit](#riwayat-commit)
+19. [Pengembangan Selanjutnya](#pengembangan-selanjutnya)
 
 ---
 
@@ -48,6 +66,21 @@ Aplikasi Android untuk memindai sinyal advertising perangkat **Bluetooth Low Ene
 
 ---
 
+## Download APK
+
+APK siap uji tersedia di halaman **[Releases](https://github.com/ajienergystar/pelacakBluetoothAndroid/releases)**.
+
+1. Download `app-release.apk` (atau `app-debug.apk`) ke HP Android.
+2. Buka file tersebut, izinkan **Instal aplikasi yang tidak dikenal** untuk aplikasi File Manager / browser jika diminta.
+3. Install, lalu buka aplikasi **BLE Pelacak**.
+
+Atau via `adb`:
+```bash
+adb install -r app-release.apk
+```
+
+---
+
 ## Setup & Menjalankan Aplikasi
 
 ### Prasyarat
@@ -62,8 +95,8 @@ Aplikasi Android untuk memindai sinyal advertising perangkat **Bluetooth Low Ene
 
 ### Langkah
 ```bash
-git clone <url-repo>
-cd TugasAndroid
+git clone https://github.com/ajienergystar/pelacakBluetoothAndroid.git
+cd pelacakBluetoothAndroid
 ```
 1. Buka folder project di Android Studio → tunggu **Gradle Sync** selesai.
 2. Aktifkan **Developer Options → USB debugging** di HP, sambungkan via USB (atau Wireless debugging).
@@ -87,6 +120,34 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ```bash
 ./gradlew testDebugUnitTest
 ```
+
+---
+
+## Cara Penggunaan
+
+1. **Buka aplikasi** → tab **Scanner** terbuka sebagai layar utama.
+2. Tekan **Start**. Saat pertama kali, Android meminta izin **"Perangkat di sekitar"** (Android 12+) atau **Lokasi** (Android 11 ke bawah) → pilih **Izinkan**.
+3. Jika Bluetooth mati, banner muncul dengan tombol **Nyalakan**.
+4. Daftar perangkat muncul dan terus diperbarui; perangkat dengan sinyal terkuat berada paling atas.
+5. Gunakan **kolom pencarian** (nama / MAC) dan **chip filter** (≥ -60/-70/-80/-90 dBm, "Bernama saja") untuk menyaring daftar. Tombol **Reset filter** mengembalikan semua.
+6. **Tap salah satu perangkat** untuk masuk ke **Radar**:
+   - Bergeraklah sambil memperhatikan zona, angka jarak, dan indikator **▲ Mendekat / ▼ Menjauh**.
+   - HP bergetar setiap kali target masuk ke zona yang lebih dekat (bisa dimatikan lewat ikon getar di kanan atas).
+7. Buka tab **Riwayat** untuk melihat semua perangkat yang pernah terdeteksi beserta waktu terakhir ditemukan. Tap item untuk membuka Radar-nya, ikon ✕ untuk menghapus satu item, atau ikon tempat sampah untuk menghapus semua.
+8. Tekan **Stop** untuk menghentikan pemindaian. Menekan tombol Home juga otomatis menjeda scan, dan scan berlanjut saat aplikasi dibuka kembali.
+
+---
+
+## Izin Aplikasi
+
+| Izin | Versi Android | Alasan |
+|---|---|---|
+| `BLUETOOTH_SCAN` (`neverForLocation`) | 12+ (API 31+) | Memindai advertising BLE tanpa menurunkan lokasi pengguna |
+| `BLUETOOTH_CONNECT` | 12+ (API 31+) | Membaca nama perangkat & meminta user menyalakan Bluetooth |
+| `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` | ≤ 11 (API ≤ 30) | Diwajibkan sistem untuk scan BLE pada Android lama |
+| `BLUETOOTH`, `BLUETOOTH_ADMIN` | ≤ 11 (API ≤ 30) | Izin Bluetooth legacy |
+
+Fitur `android.hardware.bluetooth_le` dideklarasikan `required="true"`, sehingga aplikasi hanya bisa di-install di perangkat yang mendukung BLE.
 
 ---
 
@@ -143,6 +204,30 @@ com.example.mobilepelacak
 - **Persistensi batch**: hasil scan ditulis ke Room tiap 3 detik (dan saat scan berhenti), bukan per paket advertising yang bisa puluhan per detik.
 - **Domain bebas Android SDK** → logika sinyal, filter, dan repository bisa di-unit test di JVM.
 - **UI di-throttle**: daftar perangkat di-*sample* tiap 500 ms supaya urutan list tidak berubah terus-menerus, sementara status kontrol (Start/Stop, error) tetap instan.
+
+---
+
+## Alur Data
+
+```
+BluetoothLeScanner ──ScanCallback──► AndroidBleScanner (callbackFlow<Advertisement>)
+                                           │
+                                           ▼
+                         DefaultScanRepository (single-thread scope)
+                         • Kalman filter per perangkat
+                         • gabung nama / Tx power / vendor
+                         • simpan 90 sampel RSSI terakhir
+                         • StateFlow<ScanState>  ───────────────► ScannerViewModel / RadarViewModel
+                         • batch tulis tiap 3 dtk ──► Room ──Flow──► HistoryViewModel / RadarViewModel
+                                           ▲
+BroadcastReceiver (status Bluetooth) ──────┘   ProcessLifecycleOwner (foreground/background) ──┘
+```
+
+1. User menekan **Start** → `ScannerViewModel.startScan()` → `ScanRepository.startScan()`.
+2. Repository melakukan *preflight* (izin, Bluetooth, lokasi, throttle), lalu meng-collect `BleScanner.scan()`.
+3. Setiap paket advertising diproses (filter Kalman, histori), lalu `StateFlow<ScanState>` di-update.
+4. ViewModel menggabungkan state dengan filter & ticker waktu menjadi `UiState` yang di-render Compose.
+5. Perubahan perangkat dikumpulkan lalu ditulis ke Room secara batch; layar Riwayat membaca dari Room via `Flow`.
 
 ---
 
@@ -217,6 +302,23 @@ Konstanta dikalibrasi supaya angka jarak **konsisten dengan tabel di atas** (-30
 
 ---
 
+## Skema Database
+
+Database: `mobile_pelacak.db` (Room, versi 1) — tabel `devices`:
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `address` | TEXT (PK) | MAC address perangkat |
+| `name` | TEXT? | Nama terakhir yang diketahui (tidak ditimpa nilai kosong) |
+| `last_rssi` | INTEGER | RSSI terakhir (dBm) |
+| `best_rssi` | INTEGER | RSSI terkuat yang pernah tercatat |
+| `first_seen_at` | INTEGER | Epoch millis pertama kali terdeteksi |
+| `last_seen_at` | INTEGER (index) | Epoch millis terakhir terdeteksi |
+| `session_count` | INTEGER | Jumlah sesi scan perangkat ini terdeteksi |
+| `manufacturer_id` | INTEGER? | Bluetooth SIG Company ID dari manufacturer data |
+
+---
+
 ## Testing
 
 Unit test (JVM) di `app/src/test`:
@@ -233,6 +335,36 @@ Unit test (JVM) di `app/src/test`:
 ```bash
 ./gradlew testDebugUnitTest
 ```
+
+---
+
+## Status Pengujian
+
+| Item | Hasil |
+|---|---|
+| Unit test (`./gradlew testDebugUnitTest`) | ✅ 36 test lolos |
+| Build & install ke perangkat fisik | ✅ Samsung Galaxy A14 (SM-A145F), Android 15, One UI 7.0 |
+
+Skenario manual yang disarankan untuk reviewer:
+- Start scan → daftar terisi & terurut; ubah filter/pencarian.
+- Matikan Bluetooth dari Quick Settings saat scan berjalan → banner muncul; nyalakan lagi → scan lanjut otomatis.
+- Tolak izin → banner "Berikan Izin"; tolak permanen → tombol "Buka Pengaturan".
+- Buka Radar sebuah perangkat lalu matikan perangkat tersebut → status "Sinyal Hilang" setelah ±6 detik.
+- Putar layar saat scan → scan tetap berjalan; tekan Home lalu kembali → scan dijeda & dilanjutkan.
+- Tutup aplikasi sepenuhnya, buka lagi → data di tab Riwayat tetap ada.
+
+---
+
+## Troubleshooting
+
+| Masalah | Solusi |
+|---|---|
+| Daftar perangkat kosong padahal scan berjalan | Pastikan ada perangkat BLE aktif di sekitar (smartwatch, earbuds, HP lain dengan Bluetooth menyala). Pada beberapa vendor, nyalakan juga **Lokasi**. |
+| HP tidak terdeteksi Android Studio (Samsung) | Aktifkan **Opsi pengembang → Debugging USB**, pilih mode USB **Mentransfer file**, tap **Izinkan** di popup. Matikan **Pemblokir Otomatis** (One UI 6+) dan **Blokir koneksi USB saat terkunci** bila ada. |
+| `adb devices` menampilkan `unauthorized` | Buka kunci HP, cabut-colok kabel, lalu tap **Izinkan**; atau *Revoke USB debugging authorizations* lalu ulangi. |
+| Error "Scan terlalu sering" / banner hitung mundur | Android membatasi 5× start scan per 30 detik; tunggu hitung mundur selesai, scan akan mulai otomatis. |
+| "Gagal mendaftarkan scanner ke stack Bluetooth" | Matikan lalu nyalakan Bluetooth, kemudian tekan **Coba Lagi**. |
+| Gradle Sync gagal | Gunakan JDK 21 bawaan Android Studio (Settings → Build Tools → Gradle → Gradle JDK) dan pastikan Android SDK Platform 36 ter-install. |
 
 ---
 
@@ -258,3 +390,38 @@ Unit test (JVM) di `app/src/test`:
 - Riwayat disimpan per MAC address (primary key), dengan merge: nama tidak ditimpa nilai kosong, `first_seen` dipertahankan, `best_rssi` = tertinggi, `session_count` bertambah sekali per sesi scan.
 - Project memakai **AGP 9 (built-in Kotlin)**, sehingga dipilih versi KSP (2.3.6) dan Hilt (2.59.2) yang sudah mendukung AGP 9.
 - APK release ditandatangani dengan debug keystore semata-mata agar reviewer bisa langsung meng-install; untuk produksi gunakan keystore sendiri.
+
+---
+
+## Riwayat Commit
+
+Commit dibuat bertahap per lapisan agar mudah direview:
+
+| Commit | Isi |
+|---|---|
+| `chore` | Project awal dari template Android Studio (Empty Compose Activity) |
+| `build` | Dependency Hilt, Room, KSP, Navigation, Lifecycle |
+| `feat(domain)` | Zona sinyal, estimasi jarak, Kalman filter, filter & pengurutan perangkat |
+| `feat(data)` | BLE scanner, monitor status Bluetooth, Room, repository + DI |
+| `feat(ui)` | Layar Scanner, Radar, Riwayat + navigasi |
+| `test` | Unit test domain & repository, hardening receiver Bluetooth |
+| `docs` | README |
+
+Lihat detail: `git log --oneline`.
+
+---
+
+## Pengembangan Selanjutnya
+
+- **Foreground Service** agar pelacakan tetap berjalan di background dengan notifikasi.
+- **Kalibrasi jarak per perangkat** (ukur RSSI di 1 m) dan penyimpanan konstanta kalibrasi.
+- **Favorit / label** untuk perangkat yang sering dilacak, serta notifikasi saat perangkat favorit menjauh (anti-lost).
+- **Dekode format beacon** (iBeacon, Eddystone) dan tampilan manufacturer data mentah.
+- **Ekspor riwayat** ke CSV.
+- **UI test** Compose & instrumented test untuk DAO Room.
+
+---
+
+## Lisensi
+
+Dibuat untuk keperluan study case rekrutmen Mobile Engineer.
